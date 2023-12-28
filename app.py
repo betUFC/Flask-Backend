@@ -12,6 +12,11 @@ import csv
 app = Flask(__name__)
 CORS(app)
 
+@app.route("/test-connect", methods=["GET"])
+def test_connect():
+    response = {"message": "Connected successfully"}
+    return jsonify(response)
+
 @app.route("/predict", methods=["POST"])
 def predict():
     data = request.json
