@@ -17,6 +17,11 @@ def test_connect():
     response = {"message": "Connected successfully"}
     return jsonify(response)
 
+@app.route('/test2', methods=['POST'])
+def test2():
+    data = request.json
+    return jsonify(data)
+
 @app.route("/predict", methods=["POST"])
 def predict():
     data = request.json
