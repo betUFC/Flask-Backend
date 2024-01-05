@@ -1,26 +1,27 @@
 import json
-from flask import Flask, request, jsonify
-from predict_fights_elo import process
-from ml_training_duplication import lgbm
-from testing import runTests
+from flask import Flask, request, jsonify, send_from_directory
+from predict_fights_alpha import predict_fight
+from ml_alpha import main
+from testing.testing_time_period import process_dates
 import os
 import subprocess
 import pandas as pd
 from flask_cors import CORS
 import sys
 import csv
+import base64
+
 app = Flask(__name__)
 CORS(app)
 
-@app.route("/test-connect", methods=["GET"])
-def test_connect():
-    response = {"message": "Connected successfully"}
-    return jsonify(response)
-
-@app.route('/test2', methods=['POST'])
-def test2():
-    data = request.json
-    return jsonify(data)
+@app.route('/get_all_fighter_names', methods=['GET'])
+def get_all_fighter_names():
+    csv_file_path = os.path.join('data', 'detailed_fighter_stats.csv')
+    data = read_csv(csv_file_path)
+    fighter_names = []
+    for row in data:
+        fighter_names.append(row['Fighter'])
+    return jsonify(fighter_names)
 
 @app.route("/predict", methods=["POST"])
 def predict():
@@ -32,7 +33,7 @@ def predict():
     if os.environ.get("FLASK_APP") != "app":
         os.environ["FLASK_APP"] = "app"
 
-    process(fighter_name1, fighter_name2)
+    predict_fight(fighter_name1, fighter_name2)
 
     response = {"message": "Fighter stats processed"}
     return jsonify(response)
@@ -40,7 +41,7 @@ def predict():
 @app.route("/train", methods=["POST"])
 def train():
     try:
-        lgbm()
+        main()
         response = {"message": "Model trained successfully"}
     except Exception as e:
         response = {"message": f"Error during training: {e}"}
@@ -55,17 +56,36 @@ def read_csv(file_path):
             data.append(row)
     return data
 
-@app.route('/get_stats', methods=['GET'])
+@app.route('/get_stats', methods=['POST'])
 def get_stats():
-    csv_file_path = 'predict_fights_elo.csv'  
-    data = read_csv(csv_file_path)
-    return jsonify(data)
-    
+    data = request.json
+    fighter_name1 = data.get("fighter_name1")
+    fighter_name2 = data.get("fighter_name2")
+    print(fighter_name1, fighter_name2)
 
+    csv_file_path = os.path.join('data', 'detailed_fighter_stats.csv')
+    data = read_csv(csv_file_path)
+
+    fighter1_stats = {}
+    fighter2_stats = {}
+    for row in data:
+        if row['Fighter'] == fighter_name1:
+            fighter1_stats = row
+        if row['Fighter'] == fighter_name2:
+            fighter2_stats = row
+
+    response = {
+        "fighter1_stats": fighter1_stats,
+        "fighter2_stats": fighter2_stats
+    }
+    
+    return jsonify(response)
+
+    
 @app.route("/get_predicted_data", methods=["GET"])
 def get_predicted_data():
     try:
-        with open("predicted_data.json", "r") as json_file:
+        with open(os.path.join("data", "predicted_data.json"), "r") as json_file:
             predicted_data_dict = json.load(json_file)
         response = {
             "predicted_data": predicted_data_dict["predict_data"],
@@ -77,7 +97,7 @@ def get_predicted_data():
     return jsonify(response)
 
 def get_test_results():
-    file_path = 'testing.txt'
+    file_path = os.path.join('test_results', 'testing_time_period.txt')
     try:
         with open(file_path, 'r') as file:
             content = file.read()
@@ -91,13 +111,19 @@ def test():
         data = request.json
         testFrom_card = data.get("testFrom_card")
         testTo_card = data.get("testTo_card")
-        runTests(testFrom_card, testTo_card)
+        process_dates(testFrom_card, testTo_card)
 
         response = get_test_results()
     except Exception as e:
         response = {"message": f"Error during testing: {e}"}
 
     return jsonify(response)
+
+@app.route('/get_bankroll_plot', methods=['GET'])
+def get_bankroll_plot():
+    with open(os.path.join("data", "bankroll_plot.png"), "rb") as image_file:
+        encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
+    return {"image": encoded_image}
 
 if __name__ == "__main__":
     app.run(debug=True)
