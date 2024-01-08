@@ -21,6 +21,7 @@ def get_all_fighter_names():
     fighter_names = []
     for row in data:
         fighter_names.append(row['Fighter'])
+    # print(fighter_names)
     return jsonify(fighter_names)
 
 @app.route("/predict", methods=["POST"])
@@ -111,7 +112,8 @@ def test():
         data = request.json
         testFrom_card = data.get("testFrom_card")
         testTo_card = data.get("testTo_card")
-        process_dates(testFrom_card, testTo_card)
+        strategy = data.get("strategy")
+        process_dates(testFrom_card, testTo_card, strategy)
 
         response = get_test_results()
     except Exception as e:
@@ -122,6 +124,12 @@ def test():
 @app.route('/get_bankroll_plot', methods=['GET'])
 def get_bankroll_plot():
     with open(os.path.join("data", "bankroll_plot.png"), "rb") as image_file:
+        encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
+    return {"image": encoded_image}
+
+@app.route('/get_predictions_plot', methods=['GET'])
+def get_predictions_plot():
+    with open(os.path.join("data", "predictions_bankroll_plot.png"), "rb") as image_file:
         encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
     return {"image": encoded_image}
 
