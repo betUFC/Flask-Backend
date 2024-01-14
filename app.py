@@ -1,7 +1,7 @@
 import json
 from flask import Flask, request, jsonify, send_from_directory
 from predict_fights_alpha import predict_fight
-from ml_alpha import main
+from ml_web import main
 from testing.testing_time_period import process_dates
 import os
 import subprocess
@@ -10,6 +10,7 @@ from flask_cors import CORS
 import sys
 import csv
 import base64
+import time
 
 app = Flask(__name__)
 CORS(app)
@@ -34,20 +35,23 @@ def predict():
     if os.environ.get("FLASK_APP") != "app":
         os.environ["FLASK_APP"] = "app"
 
+    # predict_fihts_alpha 
     predict_fight(fighter_name1, fighter_name2)
+    # ml_web
+    main()
 
     response = {"message": "Fighter stats processed"}
     return jsonify(response)
 
-@app.route("/train", methods=["POST"])
-def train():
-    try:
-        main()
-        response = {"message": "Model trained successfully"}
-    except Exception as e:
-        response = {"message": f"Error during training: {e}"}
+# @app.route("/train", methods=["POST"])
+# def train():
+#     try:
+#         main()
+#         response = {"message": "Model trained successfully"}
+#     except Exception as e:
+#         response = {"message": f"Error during training: {e}"}
 
-    return jsonify(response)
+#     return jsonify(response)
 
 def read_csv(file_path):
     data = []
@@ -132,6 +136,11 @@ def get_predictions_plot():
     with open(os.path.join("data", "predictions_bankroll_plot.png"), "rb") as image_file:
         encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
     return {"image": encoded_image}
+
+# test to see if flask is running
+@app.route("/test_flask", methods=["GET"])
+def test_flask():
+    return {"message": "Flask is running"}
 
 if __name__ == "__main__":
     app.run(debug=True)
